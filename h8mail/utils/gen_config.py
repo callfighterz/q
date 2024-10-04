@@ -24,6 +24,7 @@ def gen_config_file():
 ;intelx_maxfile = 10
 ;breachdirectory_user = 
 ;breachdirectory_pass =
+;leakcheck_apikey =
 """
         dest_config.write(config)
         c.good_news(

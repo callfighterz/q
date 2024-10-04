@@ -9,6 +9,7 @@ import sys
 import platform
 from .version import __version__
 
+LC_SUPPORTED = ['email', 'domain', 'keyword', 'username', 'phone', 'phash', 'origin', 'password']
 
 class local_breach_target:
     """
@@ -747,6 +748,85 @@ class target:
         except Exception as ex:
             c.bad_news(
                 f"WeLeakInfo error with {self.target} (public)"
+            )
+            print(ex)
+
+    def get_leakcheck_pub(self):
+        try:
+            c.info_news("[" + self.target + "]>[leakcheck public]")
+            url = "https://leakcheck.io/api/public?check={query}".format(
+                query=self.target
+            )
+            req = self.make_request(url, timeout=30)
+            response = req.json()
+            if req.status_code != 200:
+                c.bad_news(f"Got LC API response code {req.status_code} (public)")
+                return
+            else:
+                c.good_news(
+                    "Found {num} entries for {target} using LeakCheck (public)".format(
+                        num=response["found"], target=self.target
+                    )
+                )
+                if response["success"] is False:
+                    c.bad_news(response["error"])
+                    return
+                self.data.append(("LC_PUB_TOTAL", response["found"]))
+                if response["found"] == 0:
+                    return
+                for src in response["sources"]:
+                    self.data.append(("LC_PUB_SOURCE", src['name'] + " (" + src['date'] + ")"))
+                    self.pwned += 1
+        except Exception as ex:
+            c.bad_news(
+                f"LeakCheck error with {self.target} (public)"
+            )
+            print(ex)
+
+    def get_leakcheck_priv(self, api_key, user_query):
+        if user_query == 'hash': user_query = 'phash'
+
+        if user_query not in LC_SUPPORTED:
+            c.bad_news(
+                f"LeakCheck does not support {user_query} search (yet)"
+            )
+            return
+        try:
+            c.info_news("[" + self.target + "]>[leakcheck pro]")
+            url = "https://leakcheck.io/api/v2/query/{query}?type={user_query}".format(
+                query=self.target,
+                user_query=user_query
+            )
+            self.headers.update({"X-API-KEY": api_key})
+            req = self.make_request(url, timeout=30)
+            response = req.json()
+            if req.status_code != 200:
+                c.bad_news(f"Got LC API response code {req.status_code} - {response.get('error')} (Pro)")
+                return
+            else:
+                c.good_news(
+                    "Found {num} entries for {target} using LeakCheck (Pro)".format(
+                        num=response["found"], target=self.target
+                    )
+                )
+                self.data.append(("LC_PRIV_TOTAL", response["found"]))
+                if response["found"] == 0:
+                    return
+                for result in response["result"]:
+                    breach_name = result['source']['name'] or "N/A"
+                    breach_date = result['source']['breach_date'] or "Unknown"
+                    self.data.append(("LC_PRIV_SOURCE", breach_name + " (" + breach_date + ")"))
+                    self.pwned += 1
+                    result['fields'].remove(user_query)
+                    for field in result['fields']:
+                        field_name = field
+                        if field == 'username': field_name = 'USER'
+                        if field == 'password': field_name = 'PASS'
+                        
+                        self.data.append(("LC_PRIV_" + field_name.upper(), result[field]))
+        except Exception as ex:
+            c.bad_news(
+                f"LeakCheck error with {self.target} (private)"
             )
             print(ex)
 
