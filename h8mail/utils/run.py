@@ -8,7 +8,7 @@ import time
 import sys
 
 from .breachcompilation import breachcomp_check
-from .classes import target
+from .classes import target, LC_SUPPORTED
 from .colors import colors as c
 from .helpers import (
     fetch_emails,
@@ -64,6 +64,7 @@ def target_factory(targets, user_args):
             current_target = target(t)
         if not skip_default_queries:
             if not user_args.skip_defaults:
+                current_target.get_leakcheck_pub()
                 current_target.get_hunterio_public()
                 ## emailrep seems to insta-block h8mail user agent without a key
                 # if api_keys is None or "emailrep" not in api_keys:
@@ -83,6 +84,8 @@ def target_factory(targets, user_args):
                 )
             if "hibp" in api_keys and query == "email":
                 current_target.get_hibp3(api_keys["hibp"])
+            if "leakcheck_apikey" in api_keys and query in LC_SUPPORTED:
+                current_target.get_leakcheck_priv(api_keys["leakcheck_apikey"], query)
             if "emailrep" in api_keys and query == "email":
                 current_target.get_emailrepio(api_keys["emailrep"])
             if "hunterio" in api_keys and query == "email":
@@ -284,7 +287,7 @@ def parse_args(args):
         "-sk",
         "--skip-defaults",
         dest="skip_defaults",
-        help="Skips Scylla and HunterIO check. Ideal for local scans",
+        help="Skips Scylla, LeakCheck and HunterIO check. Ideal for local scans",
         action="store_true",
         default=False,
     )
